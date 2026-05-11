@@ -1,0 +1,96 @@
+.feed-root {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.feed-main {
+  padding-top: 64px; /* desktop navbar height */
+  padding-bottom: 20px;
+}
+
+.feed-layout {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+/* Center column always visible */
+.col-center {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Left and right sidebars hidden by default (mobile) */
+.col-left,
+.col-right {
+  display: none;
+}
+
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Dark mode toggle button */
+.dark-toggle {
+  position: fixed;
+  bottom: 80px; /* above mobile bottom nav */
+  right: 20px;
+  z-index: 99;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.dark-toggle:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Tablet: show left sidebar */
+@media (min-width: 768px) {
+  .feed-main {
+    padding-top: 64px;
+    padding-bottom: 20px;
+  }
+
+  .feed-layout {
+    grid-template-columns: 260px 1fr;
+  }
+
+  .col-left {
+    display: block;
+  }
+
+  .dark-toggle {
+    bottom: 24px;
+  }
+}
+
+/* Desktop: 3-column layout */
+@media (min-width: 1200px) {
+  .feed-layout {
+    grid-template-columns: 280px 1fr 280px;
+  }
+
+  .col-left,
+  .col-right {
+    display: block;
+  }
+}

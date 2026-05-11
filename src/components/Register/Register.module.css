@@ -1,0 +1,276 @@
+.wrapper {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface);
+  display: flex;
+  align-items: center;
+}
+
+.shape-one {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shape-two {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shape-three {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shape-dark {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.shape-dark-opacity {
+  opacity: 0.5;
+}
+
+:global([data-theme='dark']) .shape-light {
+  display: none;
+}
+
+:global([data-theme='dark']) .shape-dark {
+  display: block;
+}
+
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+  gap: 48px;
+}
+
+.image-col {
+  flex: 0 0 66.66%;
+  display: none;
+  position: relative;
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+}
+
+.hero-dark {
+  display: none;
+}
+
+:global([data-theme='dark']) .hero-light {
+  display: none;
+}
+
+:global([data-theme='dark']) .hero-dark {
+  display: block;
+}
+
+.form-col {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.logo {
+  margin-bottom: 28px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 40px;
+  line-height: 1.2;
+}
+
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 13px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 28px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+
+.google-btn:hover {
+  border-color: var(--primary);
+}
+
+.divider {
+  text-align: center;
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.divider span {
+  position: relative;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.error {
+  color: #e53e3e;
+  font-size: 13px;
+  background: rgba(229, 62, 62, 0.08);
+  border: 1px solid rgba(229, 62, 62, 0.3);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--primary);
+}
+
+.terms-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 6px;
+  transition: background 0.2s, opacity 0.2s;
+  cursor: pointer;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.bottom-text {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 32px;
+}
+
+.bottom-link {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.bottom-link:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 1024px) {
+  .image-col {
+    display: block;
+  }
+}

@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { User, Post } from '@/lib/types';
+import { api } from '@/lib/api';
+import { API } from '@/lib/endpoints';
 import styles from './CreatePost.module.css';
 
 interface CreatePostProps {
@@ -15,6 +17,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
   const [image, setImage] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,33 +28,51 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
     reader.readAsDataURL(file);
   };
 
-  const handlePost = () => {
-    if (!content.trim() && !image) return;
+  const handlePost = async () => {
+    if (!content.trim()) return;
+    setError(null);
     setSubmitting(true);
-    const post: Post = {
-      id: `post-${Date.now()}`,
-      authorId: user.id,
-      authorName: `${user.firstName} ${user.lastName}`,
-      authorAvatar: user.avatar,
-      content: content.trim(),
-      image: image ?? undefined,
-      isPublic,
-      likes: [],
-      comments: [],
-      createdAt: new Date().toISOString(),
-    };
-    onPost(post);
-    setContent('');
-    setImage(null);
-    setSubmitting(false);
-    if (fileRef.current) fileRef.current.value = '';
+    try {
+      const file = fileRef.current?.files?.[0];
+      let data: unknown;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append('content', content.trim());
+        formData.append('isPublic', String(isPublic));
+        formData.append('image', file);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${API.posts.feed}`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+        const body = await res.json();
+        if (!body.success) throw body;
+        data = body.data;
+      } else {
+        data = await api<unknown>(API.posts.feed, {
+          method: 'POST',
+          body: JSON.stringify({ content: content.trim(), isPublic }),
+        });
+      }
+
+      const post: Post = (data as { post: Post }).post ?? (data as Post);
+      onPost(post);
+      setContent('');
+      setImage(null);
+      if (fileRef.current) fileRef.current.value = '';
+    } catch {
+      setError('Failed to post. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className={styles['create-post']}>
       <div className={styles['top-row']}>
         <Image
-          src={user.avatar}
+          src={user.avatar || '/default-avatar.svg'}
           alt={user.firstName}
           width={44}
           height={44}
@@ -80,6 +101,8 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
           </button>
         </div>
       )}
+
+      {error && <p className={styles['post-error']}>{error}</p>}
 
       <div className={styles['bottom-row']}>
         <div className={styles['media-btns']}>
@@ -127,7 +150,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
             type="button"
             className={styles['post-btn']}
             onClick={handlePost}
-            disabled={submitting || (!content.trim() && !image)}
+            disabled={submitting || !content.trim()}
           >
             Post
           </button>

@@ -12,6 +12,7 @@
 8. [Routing](#8-routing)
 9. [Dark Mode](#9-dark-mode)
 10. [State Management & Data Flow](#10-state-management--data-flow)
+11. [Backend Integration](#11-backend-integration)
 
 ---
 
@@ -574,3 +575,158 @@ Feed (local state owner for posts)
 **All mutations are immutable array operations** (`map`, `filter`) that produce a new array, which is then passed to both `setPosts` (React re-render) and `savePosts` (localStorage sync) via the `updatePosts` helper. No post object is mutated in place.
 
 **Why all state in Feed and not in each PostCard?** If PostCard owned like state, it would be out of sync with localStorage and with other PostCards that might display the same like count. Lifting state up to Feed ensures one source of truth.
+
+---
+
+## 11. Backend Integration
+
+This section is specifically for building the Express backend. The frontend currently uses `localStorage` for everything — this section describes the exact API contract it expects once a real backend is wired in.
+
+---
+
+### 11.1 Data Schemas
+
+These are the exact TypeScript interfaces from `src/lib/types.ts`. Database models must match these shapes.
+
+```
+User       { id, firstName, lastName, email, password, avatar }
+Post       { id, authorId, authorName, authorAvatar, content, image?, isPublic, likes[], comments[], createdAt }
+Comment    { id, authorId, authorName, authorAvatar, content, likes[], createdAt, replies[] }
+Reply      { id, authorId, authorName, authorAvatar, content, likes[], createdAt }
+LikeInfo   { userId, userName }
+```
+
+**Notes:**
+- `authorName` and `authorAvatar` on Post / Comment / Reply are **denormalized snapshots** captured at creation time. They do not auto-update if the user changes their profile later — this is intentional.
+- `image` on Post is optional (`image?`). When present it is a URL string. Currently the frontend sends a base64 data URL — once connected to a backend, upload to S3/Cloudinary and store the CDN URL instead.
+- `password` must **never** be returned by any API response. Strip it server-side before serializing.
+- `createdAt` is always an **ISO 8601 UTC string** e.g. `"2026-05-12T10:00:00.000Z"`. The `timeAgo()` utility parses this to show relative time.
+
+---
+
+### 11.2 Validation Rules
+
+Defined in `src/lib/schemas/auth.ts`. The backend must enforce the same rules independently.
+
+**Register**
+
+| Field | Rules |
+|-------|-------|
+| `firstName` | required, min 2 chars, max 50 chars |
+| `lastName` | required, min 2 chars, max 50 chars |
+| `email` | required, valid email format, must be unique |
+| `password` | required, min 8 chars, max 64 chars, only `A-Za-z0-9` (no special characters) |
+
+**Login**
+
+| Field | Rules |
+|-------|-------|
+| `email` | required, valid email format |
+| `password` | required, non-empty |
+
+---
+
+### 11.3 Auth Flow
+
+**Current (localStorage):** User objects including passwords are stored in `localStorage`. Session is tracked by storing the logged-in user's ID.
+
+**With Express backend:**
+1. `POST /api/auth/register` — hash password with bcrypt, create user, return user + JWT
+2. `POST /api/auth/login` — verify password with bcrypt, return user + JWT
+3. Frontend stores JWT (recommend `httpOnly` cookie to prevent XSS)
+4. All protected routes attach token via `Authorization: Bearer <token>` header or cookie
+5. `GET /api/auth/me` — decode token, return current user (used on app load to restore session)
+6. `POST /api/auth/logout` — clear cookie / invalidate token
+
+**User object returned by all auth endpoints** (no `password`):
+```json
+{
+  "id": "uuid-here",
+  "firstName": "Karim",
+  "lastName": "Saif",
+  "email": "karim@example.com",
+  "avatar": "https://cdn.example.com/assets/images/profile.png"
+}
+```
+
+**Error response shape** (the frontend reads the `error` field):
+```json
+{ "ok": false, "error": "An account with this email already exists." }
+```
+
+---
+
+### 11.4 API Endpoints
+
+#### Auth
+
+| Method | Endpoint | Body | Response |
+|--------|----------|------|----------|
+| POST | `/api/auth/register` | `{ firstName, lastName, email, password }` | `{ user, token }` |
+| POST | `/api/auth/login` | `{ email, password }` | `{ user, token }` |
+| POST | `/api/auth/logout` | — | `200 OK` |
+| GET | `/api/auth/me` | — | `{ user }` |
+
+#### Posts
+
+| Method | Endpoint | Body | Description |
+|--------|----------|------|-------------|
+| GET | `/api/posts` | — | All posts, newest first |
+| POST | `/api/posts` | `{ content, image?, isPublic }` | Create post |
+| PATCH | `/api/posts/:id` | `{ content }` | Edit post text (owner only) |
+| DELETE | `/api/posts/:id` | — | Delete post (owner only) |
+| PATCH | `/api/posts/:id/visibility` | — | Toggle `isPublic` (owner only) |
+
+#### Likes (all toggle: add if not present, remove if already present)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/posts/:id/like` | Toggle like on a post |
+| POST | `/api/posts/:postId/comments/:commentId/like` | Toggle like on a comment |
+| POST | `/api/posts/:postId/comments/:commentId/replies/:replyId/like` | Toggle like on a reply |
+
+#### Comments & Replies
+
+| Method | Endpoint | Body | Description |
+|--------|----------|------|-------------|
+| POST | `/api/posts/:postId/comments` | `{ content }` | Add comment to a post |
+| POST | `/api/posts/:postId/comments/:commentId/replies` | `{ content }` | Add reply to a comment |
+
+---
+
+### 11.5 Features — What Needs a Backend vs What Is UI-Only
+
+| Feature | Needs Backend |
+|---------|--------------|
+| Register / Login / Logout | Yes |
+| Session restore on page load | Yes (`GET /api/auth/me`) |
+| Create post (text + image) | Yes |
+| Like / unlike post | Yes |
+| Add comment | Yes |
+| Like / unlike comment | Yes |
+| Add reply | Yes |
+| Like / unlike reply | Yes |
+| Edit own post | Yes |
+| Delete own post | Yes |
+| Toggle post visibility | Yes |
+| Stories | No (UI only) |
+| Search bar | No (UI only) |
+| Notifications dropdown | No (UI only, mock data) |
+| Friends list (right sidebar) | No (UI only, mock data) |
+| You Might Like (right sidebar) | No (UI only, mock data) |
+| Explore menu (left sidebar) | No (UI only) |
+| Suggested People (left sidebar) | No (UI only) |
+| Events (left sidebar) | No (UI only) |
+| Chat icon | No (UI only) |
+| Dark mode toggle | No (frontend only) |
+
+---
+
+### 11.6 Implementation Notes
+
+- **Passwords:** Hash with `bcrypt` (minimum 10 salt rounds). Never store or return plain text.
+- **IDs:** Use `crypto.randomUUID()` or MongoDB ObjectIds. The current frontend generates `user-${Date.now()}` and `post-${Date.now()}` — replace with proper UUIDs from the backend.
+- **Toggle endpoints:** Like and visibility are idempotent toggles — calling twice returns to original state. Implement as: if record exists → delete it, else → create it.
+- **Post visibility:** `isPublic: false` means "Friends only". The feed query should eventually filter private posts to show only to friends. The friends system is not yet built on the frontend.
+- **Image uploads:** Currently base64 data URLs stored in the post. For a real backend, accept `multipart/form-data` file uploads, store on S3/Cloudinary, and save the CDN URL in the database.
+- **`createdAt`:** Always return ISO 8601 UTC strings from the API. Do not return Unix timestamps — the frontend's `timeAgo()` utility calls `new Date(isoString)` directly.

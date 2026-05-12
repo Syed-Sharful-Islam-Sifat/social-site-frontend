@@ -80,6 +80,12 @@
   background: rgba(0, 0, 0, 0.8);
 }
 
+.post-error {
+  font-size: 0.8rem;
+  color: #e53e3e;
+  margin: 4px 0 0;
+}
+
 /* Bottom row */
 .bottom-row {
   display: flex;

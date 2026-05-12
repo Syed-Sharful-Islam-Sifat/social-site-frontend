@@ -1,48 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { assets } from '@/assets';
+import { registerSchema, type RegisterFormData } from '@/lib/schemas/auth';
 import styles from './Register.module.css';
 
 export default function Register() {
-  const { register, user, isLoading } = useAuth();
+  const { register: authRegister } = useAuth();
   const router = useRouter();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [repeatPassword, setRepeatPassword] = useState('');
-  const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace('/feed');
-    }
-  }, [user, isLoading, router]);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    mode: 'onTouched',
+  });
 
-  const handleSubmit = async () => {
-    setError('');
-    if (password !== repeatPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    if (!agreed) {
-      setError('You must agree to the terms & conditions.');
-      return;
-    }
-    setSubmitting(true);
-    const result = await register(firstName, lastName, email, password);
-    setSubmitting(false);
+  const onSubmit = async (data: RegisterFormData) => {
+    const result = await authRegister(data.firstName, data.lastName, data.email, data.password);
     if (result.ok) {
       router.push('/feed');
+    } else if (result.field === 'email') {
+      setError('email', { message: result.error });
     } else {
-      setError(result.error ?? 'Registration failed.');
+      setError('root', { message: result.error ?? 'Registration failed.' });
     }
   };
 
@@ -96,34 +85,29 @@ export default function Register() {
 
               <div className={styles['divider']}><span>Or</span></div>
 
-              <form
-                onSubmit={e => { e.preventDefault(); handleSubmit(); }}
-                className={styles['form']}
-              >
-                {error && <p className={styles['error']}>{error}</p>}
+              <form onSubmit={handleSubmit(onSubmit)} className={styles['form']}>
+                {errors.root && <p className={styles['error']}>{errors.root.message}</p>}
 
                 <div className={styles['name-row']}>
                   <div className={styles['form-group']}>
                     <label className={styles['label']}>First Name</label>
                     <input
                       type="text"
-                      className={styles['input']}
-                      value={firstName}
-                      onChange={e => setFirstName(e.target.value)}
-                      required
                       autoComplete="given-name"
+                      className={`${styles['input']} ${errors.firstName ? styles['input-error'] : ''}`}
+                      {...register('firstName')}
                     />
+                    {errors.firstName && <p className={styles['field-error']}>{errors.firstName.message}</p>}
                   </div>
                   <div className={styles['form-group']}>
                     <label className={styles['label']}>Last Name</label>
                     <input
                       type="text"
-                      className={styles['input']}
-                      value={lastName}
-                      onChange={e => setLastName(e.target.value)}
-                      required
                       autoComplete="family-name"
+                      className={`${styles['input']} ${errors.lastName ? styles['input-error'] : ''}`}
+                      {...register('lastName')}
                     />
+                    {errors.lastName && <p className={styles['field-error']}>{errors.lastName.message}</p>}
                   </div>
                 </div>
 
@@ -131,50 +115,49 @@ export default function Register() {
                   <label className={styles['label']}>Email</label>
                   <input
                     type="email"
-                    className={styles['input']}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
                     autoComplete="email"
+                    className={`${styles['input']} ${errors.email ? styles['input-error'] : ''}`}
+                    {...register('email')}
                   />
+                  {errors.email && <p className={styles['field-error']}>{errors.email.message}</p>}
                 </div>
 
                 <div className={styles['form-group']}>
                   <label className={styles['label']}>Password</label>
                   <input
                     type="password"
-                    className={styles['input']}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
                     autoComplete="new-password"
+                    className={`${styles['input']} ${errors.password ? styles['input-error'] : ''}`}
+                    {...register('password')}
                   />
+                  {errors.password && <p className={styles['field-error']}>{errors.password.message}</p>}
                 </div>
 
                 <div className={styles['form-group']}>
                   <label className={styles['label']}>Repeat Password</label>
                   <input
                     type="password"
-                    className={styles['input']}
-                    value={repeatPassword}
-                    onChange={e => setRepeatPassword(e.target.value)}
-                    required
                     autoComplete="new-password"
+                    className={`${styles['input']} ${errors.repeatPassword ? styles['input-error'] : ''}`}
+                    {...register('repeatPassword')}
                   />
+                  {errors.repeatPassword && <p className={styles['field-error']}>{errors.repeatPassword.message}</p>}
                 </div>
 
-                <label className={styles['terms-label']}>
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={e => setAgreed(e.target.checked)}
-                    className={styles['checkbox']}
-                  />
-                  I agree to terms &amp; conditions
-                </label>
+                <div className={styles['form-group']}>
+                  <label className={styles['terms-label']}>
+                    <input
+                      type="checkbox"
+                      className={styles['checkbox']}
+                      {...register('agreed')}
+                    />
+                    I agree to terms &amp; conditions
+                  </label>
+                  {errors.agreed && <p className={styles['field-error']}>{errors.agreed.message}</p>}
+                </div>
 
-                <button type="submit" className={styles['submit-btn']} disabled={submitting}>
-                  {submitting ? 'Registering…' : 'Register now'}
+                <button type="submit" className={styles['submit-btn']} disabled={isSubmitting}>
+                  {isSubmitting ? 'Registering…' : 'Register now'}
                 </button>
               </form>
 

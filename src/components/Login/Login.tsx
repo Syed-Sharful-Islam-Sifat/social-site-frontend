@@ -1,36 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { assets } from '@/assets';
+import { loginSchema, type LoginFormData } from '@/lib/schemas/auth';
 import styles from './Login.module.css';
 
 export default function Login() {
-  const { login, user, isLoading } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      router.replace('/feed');
-    }
-  }, [user, isLoading, router]);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
+  });
 
-  const handleSubmit = async () => {
-    setError('');
-    setSubmitting(true);
-    const ok = await login(email, password);
-    setSubmitting(false);
-    if (ok) {
-      router.push('/feed');
+  const onSubmit = async (data: LoginFormData) => {
+    const ok = await login(data.email, data.password);
+    if (!ok) {
+      setError('root', { message: 'Invalid email or password.' });
     } else {
-      setError('Invalid email or password.');
+      router.push('/feed');
     }
   };
 
@@ -76,34 +75,29 @@ export default function Login() {
 
               <div className={styles['divider']}><span>Or</span></div>
 
-              <form
-                onSubmit={e => { e.preventDefault(); handleSubmit(); }}
-                className={styles['form']}
-              >
-                {error && <p className={styles['error']}>{error}</p>}
+              <form onSubmit={handleSubmit(onSubmit)} className={styles['form']}>
+                {errors.root && <p className={styles['error']}>{errors.root.message}</p>}
 
                 <div className={styles['form-group']}>
                   <label className={styles['label']}>Email</label>
                   <input
                     type="email"
-                    className={styles['input']}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
                     autoComplete="email"
+                    className={`${styles['input']} ${errors.email ? styles['input-error'] : ''}`}
+                    {...register('email')}
                   />
+                  {errors.email && <p className={styles['field-error']}>{errors.email.message}</p>}
                 </div>
 
                 <div className={styles['form-group']}>
                   <label className={styles['label']}>Password</label>
                   <input
                     type="password"
-                    className={styles['input']}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
                     autoComplete="current-password"
+                    className={`${styles['input']} ${errors.password ? styles['input-error'] : ''}`}
+                    {...register('password')}
                   />
+                  {errors.password && <p className={styles['field-error']}>{errors.password.message}</p>}
                 </div>
 
                 <div className={styles['form-options']}>
@@ -114,8 +108,8 @@ export default function Login() {
                   <span className={styles['forgot-link']}>Forgot password?</span>
                 </div>
 
-                <button type="submit" className={styles['submit-btn']} disabled={submitting}>
-                  {submitting ? 'Logging in…' : 'Login now'}
+                <button type="submit" className={styles['submit-btn']} disabled={isSubmitting}>
+                  {isSubmitting ? 'Logging in…' : 'Login now'}
                 </button>
               </form>
 

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { getPosts, savePosts } from '@/lib/storage';
-import { SEED_POSTS } from '@/lib/mockData';
+import { api } from '@/lib/api';
+import { API } from '@/lib/endpoints';
 import { Post, LikeInfo } from '@/lib/types';
 import Navbar from '@/components/Navbar/Navbar';
 import LeftSidebar from '@/components/LeftSidebar/LeftSidebar';
@@ -14,47 +14,59 @@ import CreatePost from '@/components/CreatePost/CreatePost';
 import PostCard from '@/components/PostCard/PostCard';
 import styles from './Feed.module.css';
 
+const DEFAULT_AVATAR = '/default-avatar.svg';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizePost(p: any): Post {
+  return {
+    ...p,
+    id: p.id ?? p._id,
+    authorAvatar: p.authorAvatar || DEFAULT_AVATAR,
+    likes: p.likes ?? [],
+    comments: (p.comments ?? []).map((c: any) => ({
+      ...c,
+      id: c.id ?? c._id,
+      authorAvatar: c.authorAvatar || DEFAULT_AVATAR,
+      likes: c.likes ?? [],
+      replies: (c.replies ?? []).map((r: any) => ({
+        ...r,
+        id: r.id ?? r._id,
+        authorAvatar: r.authorAvatar || DEFAULT_AVATAR,
+        likes: r.likes ?? [],
+      })),
+    })),
+  };
+}
+
 export default function Feed() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  /* Protected route */
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace('/login');
-    }
-  }, [user, isLoading, router]);
-
-  /* Load posts from localStorage on mount */
-  useEffect(() => {
-    const stored = getPosts();
-    setPosts(stored.length > 0 ? stored : SEED_POSTS);
-    setMounted(true);
+    api<unknown>(API.posts.feed)
+      .then((data) => {
+        const raw = Array.isArray(data)
+          ? (data as unknown[])
+          : ((data as { posts: unknown[] }).posts ?? []);
+        setPosts(raw.map(normalizePost));
+      })
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
   }, []);
 
-  /* Dark mode: apply to <html> data-theme attribute */
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : '');
   }, [darkMode]);
 
-  /* ─── Post mutation handlers ─── */
-
-  const updatePosts = (next: Post[]) => {
-    setPosts(next);
-    savePosts(next);
-  };
-
-  const handleNewPost = (post: Post) => {
-    updatePosts([post, ...posts]);
-  };
+  const handleNewPost = (post: Post) => setPosts(prev => [normalizePost(post), ...prev]);
 
   const handleLikePost = (postId: string) => {
     if (!user) return;
     const liker: LikeInfo = { userId: user.id, userName: `${user.firstName} ${user.lastName}` };
-    updatePosts(posts.map(p => {
+    setPosts(posts.map(p => {
       if (p.id !== postId) return p;
       const already = p.likes.some(l => l.userId === user.id);
       return { ...p, likes: already ? p.likes.filter(l => l.userId !== user.id) : [...p.likes, liker] };
@@ -63,7 +75,7 @@ export default function Feed() {
 
   const handleAddComment = (postId: string, content: string) => {
     if (!user) return;
-    updatePosts(posts.map(p => {
+    setPosts(posts.map(p => {
       if (p.id !== postId) return p;
       const comment = {
         id: `comment-${Date.now()}`,
@@ -82,7 +94,7 @@ export default function Feed() {
   const handleLikeComment = (postId: string, commentId: string) => {
     if (!user) return;
     const liker: LikeInfo = { userId: user.id, userName: `${user.firstName} ${user.lastName}` };
-    updatePosts(posts.map(p => {
+    setPosts(posts.map(p => {
       if (p.id !== postId) return p;
       return {
         ...p,
@@ -97,7 +109,7 @@ export default function Feed() {
 
   const handleAddReply = (postId: string, commentId: string, content: string) => {
     if (!user) return;
-    updatePosts(posts.map(p => {
+    setPosts(posts.map(p => {
       if (p.id !== postId) return p;
       return {
         ...p,
@@ -121,7 +133,7 @@ export default function Feed() {
   const handleLikeReply = (postId: string, commentId: string, replyId: string) => {
     if (!user) return;
     const liker: LikeInfo = { userId: user.id, userName: `${user.firstName} ${user.lastName}` };
-    updatePosts(posts.map(p => {
+    setPosts(posts.map(p => {
       if (p.id !== postId) return p;
       return {
         ...p,
@@ -141,37 +153,39 @@ export default function Feed() {
   };
 
   const handleDeletePost = (postId: string) => {
-    updatePosts(posts.filter(p => p.id !== postId));
+    setPosts(posts.filter(p => p.id !== postId));
   };
 
   const handleEditPost = (postId: string, newContent: string) => {
-    updatePosts(posts.map(p => p.id === postId ? { ...p, content: newContent } : p));
+    setPosts(posts.map(p => p.id === postId ? { ...p, content: newContent } : p));
   };
 
   const handleToggleVisibility = (postId: string) => {
-    updatePosts(posts.map(p => p.id === postId ? { ...p, isPublic: !p.isPublic } : p));
+    setPosts(posts.map(p => p.id === postId ? { ...p, isPublic: !p.isPublic } : p));
   };
 
-  if (isLoading || !mounted) return null;
-  if (!user) return null;
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/login');
+    }
+  }, [isLoading, user, router]);
 
+  if (isLoading || !user) return null;
   return (
     <div className={styles['feed-root']}>
       <Navbar />
 
       <main className={styles['feed-main']}>
         <div className={styles['feed-layout']}>
-          {/* Left sidebar */}
           <div className={styles['col-left']}>
             <LeftSidebar />
           </div>
 
-          {/* Center */}
           <div className={styles['col-center']}>
             <Stories />
             <CreatePost user={user} onPost={handleNewPost} />
             <div className={styles['posts-list']}>
-              {posts.map(post => (
+              {postsLoading ? null : posts.map(post => (
                 <PostCard
                   key={post.id}
                   post={post}
@@ -189,14 +203,12 @@ export default function Feed() {
             </div>
           </div>
 
-          {/* Right sidebar */}
           <div className={styles['col-right']}>
             <RightSidebar />
           </div>
         </div>
       </main>
 
-      {/* Dark mode toggle */}
       <button
         type="button"
         className={styles['dark-toggle']}

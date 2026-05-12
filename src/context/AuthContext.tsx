@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/types';
-import { getCurrentUser, setCurrentUserId, getUsers, saveUsers } from '@/lib/storage';
-import { assets } from '@/assets';
+import { api, ApiError } from '@/lib/api';
+import { API } from '@/lib/endpoints';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (firstName: string, lastName: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
+  register: (firstName: string, lastName: string, email: string, password: string) => Promise<{ ok: boolean; error?: string; field?: string }>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -20,17 +20,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getCurrentUser());
-    setIsLoading(false);
+    api<unknown>(API.auth.me)
+      .then((data) => {
+        console.log('[auth/me]', data);
+        const user = (data as { user: User }).user ?? (data as User);
+        setUser(user ?? null);
+      })
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users = getUsers();
-    const found = users.find(u => u.email === email && u.password === password);
-    if (!found) return false;
-    setCurrentUserId(found.id);
-    setUser(found);
-    return true;
+    try {
+      const { user: found } = await api<{ user: User }>(API.auth.login, {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      setUser(found);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const register = async (
@@ -38,27 +48,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastName: string,
     email: string,
     password: string,
-  ): Promise<{ ok: boolean; error?: string }> => {
-    const users = getUsers();
-    if (users.find(u => u.email === email)) {
-      return { ok: false, error: 'An account with this email already exists.' };
+  ): Promise<{ ok: boolean; error?: string; field?: string }> => {
+    try {
+      const { user: newUser } = await api<{ user: User }>(API.auth.register, {
+        method: 'POST',
+        body: JSON.stringify({ firstName, lastName, email, password }),
+      });
+      setUser(newUser);
+      return { ok: true };
+    } catch (err) {
+      const { message, field } = err as ApiError;
+      return { ok: false, error: message, field };
     }
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      firstName,
-      lastName,
-      email,
-      password,
-      avatar: assets.profileFallback,
-    };
-    saveUsers([...users, newUser]);
-    setCurrentUserId(newUser.id);
-    setUser(newUser);
-    return { ok: true };
   };
 
-  const logout = () => {
-    setCurrentUserId(null);
+  const logout = async () => {
+    await api(API.auth.logout, { method: 'POST' }).catch(() => {});
     setUser(null);
   };
 

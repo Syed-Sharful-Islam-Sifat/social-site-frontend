@@ -102,7 +102,7 @@ export default function Navbar() {
                   <ul className={styles['notif-list']}>
                     {MOCK_NOTIFICATIONS.map(n => (
                       <li key={n.id} className={styles['notif-item']}>
-                        <Image src={n.avatar} alt="" width={38} height={38} className={styles['notif-avatar']} />
+                        <Image src={n.avatar || '/default-avatar.svg'} alt="" width={38} height={38} className={styles['notif-avatar']} />
                         <div className={styles['notif-body']}>
                           <p className={styles['notif-text']}>{n.text}</p>
                           <span className={styles['notif-time']}>{n.time}</span>

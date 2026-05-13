@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const PROTECTED = ['/feed'];
 const AUTH_ONLY = ['/login', '/register'];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthenticated = request.cookies.has('auth_token');
 

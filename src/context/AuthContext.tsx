@@ -25,7 +25,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const user = (data as { user: User }).user ?? (data as User);
         setUser(user ?? null);
       })
-      .catch(() => setUser(null))
+      .catch(async (err: ApiError) => {
+        if (err.status === 401) {
+          await api(API.auth.logout, { method: 'POST' }).catch(() => {});
+        }
+        setUser(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 

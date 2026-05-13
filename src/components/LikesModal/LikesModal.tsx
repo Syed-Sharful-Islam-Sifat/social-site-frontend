@@ -13,8 +13,14 @@ interface LikeEntry {
 function normalizeLike(item: any): LikeEntry { // eslint-disable-line @typescript-eslint/no-explicit-any
   if (item.user) {
     return {
-      name: `${item.user.firstName} ${item.user.lastName}`.trim() || 'User',
+      name: `${item.user.firstName ?? ''} ${item.user.lastName ?? ''}`.trim() || 'User',
       avatar: item.user.avatar || '/default-avatar.svg',
+    };
+  }
+  if (item.firstName || item.lastName) {
+    return {
+      name: `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim() || 'User',
+      avatar: item.avatar || '/default-avatar.svg',
     };
   }
   return {

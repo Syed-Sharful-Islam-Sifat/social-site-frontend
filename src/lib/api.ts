@@ -4,6 +4,7 @@ export interface ApiError {
   success: false;
   message: string;
   field?: string;
+  status: number;
 }
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -19,7 +20,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const body = await res.json();
 
   if (!body.success) {
-    throw body as ApiError;
+    throw { ...body, status: res.status } as ApiError;
   }
 
   return body.data as T;

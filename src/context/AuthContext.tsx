@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await api(API.auth.logout, { method: 'POST' }).catch(() => {});
     clearPresenceCookie();
-    setUser(null);
+    window.location.href = '/login';
   };
 
   return (

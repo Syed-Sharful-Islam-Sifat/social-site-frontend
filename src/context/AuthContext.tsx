@@ -5,6 +5,17 @@ import { User } from '@/lib/types';
 import { api, ApiError } from '@/lib/api';
 import { API } from '@/lib/endpoints';
 
+const PRESENCE_COOKIE = 'auth_presence';
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+
+function setPresenceCookie() {
+  document.cookie = `${PRESENCE_COOKIE}=1; path=/; max-age=${COOKIE_MAX_AGE}; secure; samesite=lax`;
+}
+
+function clearPresenceCookie() {
+  document.cookie = `${PRESENCE_COOKIE}=; path=/; max-age=0`;
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -24,10 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         const user = (data as { user: User }).user ?? (data as User);
         setUser(user ?? null);
+        setPresenceCookie();
       })
       .catch(async (err: ApiError) => {
         if (err.status === 401) {
           await api(API.auth.logout, { method: 'POST' }).catch(() => {});
+          clearPresenceCookie();
         }
         setUser(null);
       })
@@ -41,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       setUser(found);
+      setPresenceCookie();
       return true;
     } catch {
       return false;
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ firstName, lastName, email, password, repeatPassword, agreed }),
       });
       setUser(newUser);
+      setPresenceCookie();
       return { ok: true };
     } catch (err) {
       const { message, field } = err as ApiError;
@@ -70,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await api(API.auth.logout, { method: 'POST' }).catch(() => {});
+    clearPresenceCookie();
     setUser(null);
   };
 

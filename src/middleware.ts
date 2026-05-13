@@ -6,7 +6,7 @@ const AUTH_ONLY = ['/login', '/register'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthenticated = request.cookies.has('auth_token');
+  const isAuthenticated = request.cookies.has('auth_presence');
 
   if (PROTECTED.some(p => pathname.startsWith(p)) && !isAuthenticated) {
     return NextResponse.redirect(new URL('/login', request.url));

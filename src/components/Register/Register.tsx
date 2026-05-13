@@ -2,7 +2,6 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +11,6 @@ import styles from './Register.module.css';
 
 export default function Register() {
   const { register: authRegister } = useAuth();
-  const router = useRouter();
 
   const {
     register,
@@ -27,7 +25,7 @@ export default function Register() {
   const onSubmit = async (data: RegisterFormData) => {
     const result = await authRegister(data.firstName, data.lastName, data.email, data.password, data.repeatPassword, data.agreed);
     if (result.ok) {
-      router.push('/feed');
+      window.location.href = '/feed';
     } else if (result.field === 'email') {
       setError('email', { message: result.error });
     } else {

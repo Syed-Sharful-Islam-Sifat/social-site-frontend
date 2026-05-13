@@ -2,7 +2,6 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -12,7 +11,6 @@ import styles from './Login.module.css';
 
 export default function Login() {
   const { login } = useAuth();
-  const router = useRouter();
 
   const {
     register,
@@ -29,7 +27,7 @@ export default function Login() {
     if (!ok) {
       setError('root', { message: 'Invalid email or password.' });
     } else {
-      router.push('/feed');
+      window.location.href = '/feed';
     }
   };
 

@@ -20,7 +20,7 @@ export default function Stories() {
             <div className={styles['story-bg']}>
               <Image
                 src={story.image}
-                alt={story.name}
+                alt={story.name || 'Story'}
                 fill
                 className={styles['story-img']}
                 sizes="120px"
@@ -29,7 +29,7 @@ export default function Stories() {
             <div className={styles['story-avatar-ring']}>
               <Image
                 src={story.avatar}
-                alt={story.name}
+                alt={story.name || 'Story'}
                 width={36}
                 height={36}
                 className={styles['story-avatar']}

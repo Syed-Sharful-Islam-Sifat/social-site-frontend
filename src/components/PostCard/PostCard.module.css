@@ -216,9 +216,18 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: transparent;
-  cursor: pointer;
   padding: 2px;
+}
+
+.like-thumb {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.comments-loading {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 4px;
 }
 
 .like-avatars {

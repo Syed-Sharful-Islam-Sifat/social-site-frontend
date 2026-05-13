@@ -8,7 +8,7 @@ import { API } from '@/lib/endpoints';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (firstName: string, lastName: string, email: string, password: string) => Promise<{ ok: boolean; error?: string; field?: string }>;
+  register: (firstName: string, lastName: string, email: string, password: string, repeatPassword: string, agreed: boolean) => Promise<{ ok: boolean; error?: string; field?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -22,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     api<unknown>(API.auth.me)
       .then((data) => {
-        console.log('[auth/me]', data);
         const user = (data as { user: User }).user ?? (data as User);
         setUser(user ?? null);
       })
@@ -48,11 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastName: string,
     email: string,
     password: string,
+    repeatPassword: string,
+    agreed: boolean,
   ): Promise<{ ok: boolean; error?: string; field?: string }> => {
     try {
       const { user: newUser } = await api<{ user: User }>(API.auth.register, {
         method: 'POST',
-        body: JSON.stringify({ firstName, lastName, email, password }),
+        body: JSON.stringify({ firstName, lastName, email, password, repeatPassword, agreed }),
       });
       setUser(newUser);
       return { ok: true };

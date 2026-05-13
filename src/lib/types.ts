@@ -3,13 +3,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
   avatar: string;
-}
-
-export interface LikeInfo {
-  userId: string;
-  userName: string;
 }
 
 export interface Reply {
@@ -18,7 +12,8 @@ export interface Reply {
   authorName: string;
   authorAvatar: string;
   content: string;
-  likes: LikeInfo[];
+  likeCount: number;
+  likedByMe: boolean;
   createdAt: string;
 }
 
@@ -28,9 +23,12 @@ export interface Comment {
   authorName: string;
   authorAvatar: string;
   content: string;
-  likes: LikeInfo[];
-  createdAt: string;
+  likeCount: number;
+  likedByMe: boolean;
+  replyCount: number;
   replies: Reply[];
+  repliesLoaded: boolean;
+  createdAt: string;
 }
 
 export interface Post {
@@ -40,8 +38,11 @@ export interface Post {
   authorAvatar: string;
   content: string;
   image?: string;
-  isPublic: boolean;
-  likes: LikeInfo[];
+  visibility: 'public' | 'private';
+  likeCount: number;
+  likedByMe: boolean;
+  commentCount: number;
   comments: Comment[];
+  commentsLoaded: boolean;
   createdAt: string;
 }

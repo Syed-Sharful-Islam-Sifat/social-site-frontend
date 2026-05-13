@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { User, Post } from '@/lib/types';
 import { api } from '@/lib/api';
 import { API } from '@/lib/endpoints';
+import { useToast } from '@/context/ToastContext';
 import styles from './CreatePost.module.css';
 
 interface CreatePostProps {
@@ -15,9 +16,9 @@ interface CreatePostProps {
 export default function CreatePost({ user, onPost }: CreatePostProps) {
   const [content, setContent] = useState('');
   const [image, setImage] = useState<string | null>(null);
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +31,6 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
 
   const handlePost = async () => {
     if (!content.trim()) return;
-    setError(null);
     setSubmitting(true);
     try {
       const file = fileRef.current?.files?.[0];
@@ -39,7 +39,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
       if (file) {
         const formData = new FormData();
         formData.append('content', content.trim());
-        formData.append('isPublic', String(isPublic));
+        formData.append('visibility', visibility);
         formData.append('image', file);
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${API.posts.feed}`, {
           method: 'POST',
@@ -52,7 +52,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
       } else {
         data = await api<unknown>(API.posts.feed, {
           method: 'POST',
-          body: JSON.stringify({ content: content.trim(), isPublic }),
+          body: JSON.stringify({ content: content.trim(), visibility }),
         });
       }
 
@@ -62,7 +62,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
       setImage(null);
       if (fileRef.current) fileRef.current.value = '';
     } catch {
-      setError('Failed to post. Please try again.');
+      showToast('Failed to post. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +73,7 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
       <div className={styles['top-row']}>
         <Image
           src={user.avatar || '/default-avatar.svg'}
-          alt={user.firstName}
+          alt={user.firstName || 'User'}
           width={44}
           height={44}
           className={styles['user-avatar']}
@@ -101,8 +101,6 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
           </button>
         </div>
       )}
-
-      {error && <p className={styles['post-error']}>{error}</p>}
 
       <div className={styles['bottom-row']}>
         <div className={styles['media-btns']}>
@@ -140,11 +138,11 @@ export default function CreatePost({ user, onPost }: CreatePostProps) {
         <div className={styles['post-actions']}>
           <select
             className={styles['visibility-select']}
-            value={isPublic ? 'public' : 'friends'}
-            onChange={e => setIsPublic(e.target.value === 'public')}
+            value={visibility}
+            onChange={e => setVisibility(e.target.value as 'public' | 'private')}
           >
             <option value="public">🌐 Public</option>
-            <option value="friends">👥 Friends</option>
+            <option value="private">🔒 Private</option>
           </select>
           <button
             type="button"

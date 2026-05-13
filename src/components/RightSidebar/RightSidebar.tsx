@@ -54,7 +54,7 @@ export default function RightSidebar() {
             <li key={person.id} className={styles['like-item']}>
               <Image
                 src={person.avatar}
-                alt={person.name}
+                alt={person.name || 'Person'}
                 width={44}
                 height={44}
                 className={styles['like-avatar']}
@@ -101,7 +101,7 @@ export default function RightSidebar() {
               <div className={styles['friend-avatar-wrap']}>
                 <Image
                   src={friend.avatar}
-                  alt={friend.name}
+                  alt={friend.name || 'User'}
                   width={40}
                   height={40}
                   className={styles['friend-avatar']}

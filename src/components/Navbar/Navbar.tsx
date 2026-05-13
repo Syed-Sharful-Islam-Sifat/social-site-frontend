@@ -102,7 +102,7 @@ export default function Navbar() {
                   <ul className={styles['notif-list']}>
                     {MOCK_NOTIFICATIONS.map(n => (
                       <li key={n.id} className={styles['notif-item']}>
-                        <Image src={n.avatar || '/default-avatar.svg'} alt="" width={38} height={38} className={styles['notif-avatar']} />
+                        <Image src={n.avatar || '/default-avatar.svg'} alt={n.text || 'Notification'} width={38} height={38} className={styles['notif-avatar']} />
                         <div className={styles['notif-body']}>
                           <p className={styles['notif-text']}>{n.text}</p>
                           <span className={styles['notif-time']}>{n.time}</span>
@@ -131,7 +131,7 @@ export default function Navbar() {
               >
                 <Image
                   src={user?.avatar ?? assets.profileFallback}
-                  alt={fullName}
+                  alt={fullName || 'User'}
                   width={36}
                   height={36}
                   className={styles['profile-avatar']}
@@ -146,7 +146,7 @@ export default function Navbar() {
                   <div className={styles['profile-info']}>
                     <Image
                       src={user?.avatar ?? assets.profileFallback}
-                      alt={fullName}
+                      alt={fullName || 'User'}
                       width={44}
                       height={44}
                       className={styles['profile-avatar']}

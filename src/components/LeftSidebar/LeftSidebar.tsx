@@ -64,7 +64,7 @@ export default function LeftSidebar() {
             <li key={person.id} className={styles['person-item']}>
               <Image
                 src={person.avatar}
-                alt={person.name}
+                alt={person.name || 'Person'}
                 width={44}
                 height={44}
                 className={styles['person-avatar']}
@@ -88,7 +88,7 @@ export default function LeftSidebar() {
               <div className={styles['event-img-wrap']}>
                 <Image
                   src={event.image}
-                  alt={event.title}
+                  alt={event.title || 'Event'}
                   width={80}
                   height={64}
                   className={styles['event-img']}

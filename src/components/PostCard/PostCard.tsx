@@ -3,15 +3,19 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Post, Comment, Reply, User } from '@/lib/types';
+import { API } from '@/lib/endpoints';
 import { timeAgo } from '@/lib/utils';
+import LikesModal from '@/components/LikesModal/LikesModal';
 import styles from './PostCard.module.css';
 
 interface PostCardProps {
   post: Post;
   currentUser: User | null;
   onLikePost: (postId: string) => void;
+  onLoadComments: (postId: string) => void;
   onAddComment: (postId: string, content: string) => void;
   onLikeComment: (postId: string, commentId: string) => void;
+  onLoadReplies: (postId: string, commentId: string) => void;
   onAddReply: (postId: string, commentId: string, content: string) => void;
   onLikeReply: (postId: string, commentId: string, replyId: string) => void;
   onDeletePost: (postId: string) => void;
@@ -23,8 +27,10 @@ export default function PostCard({
   post,
   currentUser,
   onLikePost,
+  onLoadComments,
   onAddComment,
   onLikeComment,
+  onLoadReplies,
   onAddReply,
   onLikeReply,
   onDeletePost,
@@ -32,7 +38,7 @@ export default function PostCard({
   onToggleVisibility,
 }: PostCardProps) {
   const isOwn = currentUser?.id === post.authorId;
-  const isLiked = currentUser ? post.likes.some(l => l.userId === currentUser.id) : false;
+  const isPublic = post.visibility === 'public';
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [commentInput, setCommentInput] = useState('');
@@ -40,7 +46,7 @@ export default function PostCard({
   const [showAllComments, setShowAllComments] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
-  const [showLikes, setShowLikes] = useState(false);
+  const [likesEndpoint, setLikesEndpoint] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +59,14 @@ export default function PostCard({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const handleToggleComments = () => {
+    const willShow = !showComments;
+    setShowComments(willShow);
+    if (willShow && !post.commentsLoaded) {
+      onLoadComments(post.id);
+    }
+  };
+
   const handleAddComment = () => {
     if (!commentInput.trim()) return;
     onAddComment(post.id, commentInput.trim());
@@ -61,9 +75,7 @@ export default function PostCard({
   };
 
   const handleEditSave = () => {
-    if (editContent.trim()) {
-      onEditPost(post.id, editContent.trim());
-    }
+    if (editContent.trim()) onEditPost(post.id, editContent.trim());
     setIsEditing(false);
   };
 
@@ -76,7 +88,7 @@ export default function PostCard({
       <div className={styles['post-header']}>
         <Image
           src={post.authorAvatar}
-          alt={post.authorName}
+          alt={post.authorName || 'User'}
           width={44}
           height={44}
           className={styles['author-avatar']}
@@ -86,8 +98,8 @@ export default function PostCard({
           <p className={styles['post-meta']}>
             {timeAgo(post.createdAt)}
             <span className={styles['meta-dot']}>·</span>
-            <span className={`${styles['visibility-badge']} ${post.isPublic ? styles['public'] : styles['private']}`}>
-              {post.isPublic ? '🌐 Public' : '👥 Friends'}
+            <span className={`${styles['visibility-badge']} ${isPublic ? styles['public'] : styles['private']}`}>
+              {isPublic ? '🌐 Public' : '🔒 Private'}
             </span>
           </p>
         </div>
@@ -137,7 +149,7 @@ export default function PostCard({
                       className={styles['menu-item']}
                       onClick={() => { onToggleVisibility(post.id); setMenuOpen(false); }}
                     >
-                      {post.isPublic ? '👥 Make Friends Only' : '🌐 Make Public'}
+                      {isPublic ? '🔒 Make Private' : '🌐 Make Public'}
                     </button>
                   </li>
                   <li>
@@ -183,32 +195,23 @@ export default function PostCard({
         )}
       </div>
 
-      {/* Stats */}
+      <LikesModal endpoint={likesEndpoint} onClose={() => setLikesEndpoint(null)} />
+
+      {/* Stats row */}
       <div className={styles['post-stats']}>
-        <button
-          type="button"
-          className={styles['like-count-btn']}
-          onClick={() => setShowLikes(o => !o)}
-        >
-          <span className={styles['like-avatars']}>
-            {post.likes.slice(0, 3).map((l, i) => (
-              <span key={l.userId} className={styles['like-avatar-bubble']} style={{ zIndex: 3 - i }}>
-                {l.userName.charAt(0)}
-              </span>
-            ))}
-          </span>
-          {post.likes.length > 0 && (
-            <span className={styles['like-count']}>{post.likes.length}</span>
-          )}
-        </button>
-        {showLikes && post.likes.length > 0 && (
-          <div className={styles['likes-tooltip']}>
-            {post.likes.map(l => <p key={l.userId} className={styles['likes-name']}>{l.userName}</p>)}
-          </div>
+        {post.likeCount > 0 && (
+          <button
+            type="button"
+            className={styles['like-count-btn']}
+            onClick={() => setLikesEndpoint(API.posts.likes(post.id))}
+          >
+            <span className={styles['like-thumb']}>👍</span>
+            <span className={styles['like-count']}>{post.likeCount}</span>
+          </button>
         )}
         <div className={styles['stats-right']}>
-          <button type="button" className={styles['stat-link']} onClick={() => { setShowComments(o => !o); }}>
-            {post.comments.length} Comment{post.comments.length !== 1 ? 's' : ''}
+          <button type="button" className={styles['stat-link']} onClick={handleToggleComments}>
+            {post.commentCount} Comment{post.commentCount !== 1 ? 's' : ''}
           </button>
           <span className={styles['stat-link']}>0 Shares</span>
         </div>
@@ -218,21 +221,17 @@ export default function PostCard({
       <div className={styles['post-actions']}>
         <button
           type="button"
-          className={`${styles['action-btn']} ${isLiked ? styles['action-liked'] : ''}`}
+          className={`${styles['action-btn']} ${post.likedByMe ? styles['action-liked'] : ''}`}
           onClick={() => currentUser && onLikePost(post.id)}
           disabled={!currentUser}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={post.likedByMe ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
             <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
             <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
           </svg>
           Like
         </button>
-        <button
-          type="button"
-          className={styles['action-btn']}
-          onClick={() => setShowComments(o => !o)}
-        >
+        <button type="button" className={styles['action-btn']} onClick={handleToggleComments}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
@@ -251,8 +250,8 @@ export default function PostCard({
       {currentUser && (
         <div className={styles['comment-input-row']}>
           <Image
-            src={currentUser.avatar}
-            alt={currentUser.firstName}
+            src={currentUser.avatar || '/default-avatar.svg'}
+            alt={currentUser.firstName || 'User'}
             width={36}
             height={36}
             className={styles['comment-input-avatar']}
@@ -276,28 +275,35 @@ export default function PostCard({
       )}
 
       {/* Comments list */}
-      {showComments && post.comments.length > 0 && (
+      {showComments && (
         <div className={styles['comments-section']}>
-          {hiddenCount > 0 && !showAllComments && (
-            <button
-              type="button"
-              className={styles['view-more-btn']}
-              onClick={() => setShowAllComments(true)}
-            >
-              View {hiddenCount} previous comment{hiddenCount !== 1 ? 's' : ''}
-            </button>
+          {!post.commentsLoaded ? (
+            <p className={styles['comments-loading']}>Loading comments…</p>
+          ) : post.comments.length === 0 ? null : (
+            <>
+              {hiddenCount > 0 && !showAllComments && (
+                <button
+                  type="button"
+                  className={styles['view-more-btn']}
+                  onClick={() => setShowAllComments(true)}
+                >
+                  View {hiddenCount} previous comment{hiddenCount !== 1 ? 's' : ''}
+                </button>
+              )}
+              {displayedComments.map(comment => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  postId={post.id}
+                  currentUser={currentUser}
+                  onLikeComment={onLikeComment}
+                  onLoadReplies={onLoadReplies}
+                  onAddReply={onAddReply}
+                  onLikeReply={onLikeReply}
+                />
+              ))}
+            </>
           )}
-          {displayedComments.map(comment => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              postId={post.id}
-              currentUser={currentUser}
-              onLikeComment={onLikeComment}
-              onAddReply={onAddReply}
-              onLikeReply={onLikeReply}
-            />
-          ))}
         </div>
       )}
     </article>
@@ -311,15 +317,16 @@ interface CommentItemProps {
   postId: string;
   currentUser: User | null;
   onLikeComment: (postId: string, commentId: string) => void;
+  onLoadReplies: (postId: string, commentId: string) => void;
   onAddReply: (postId: string, commentId: string, content: string) => void;
   onLikeReply: (postId: string, commentId: string, replyId: string) => void;
 }
 
-function CommentItem({ comment, postId, currentUser, onLikeComment, onAddReply, onLikeReply }: CommentItemProps) {
+function CommentItem({ comment, postId, currentUser, onLikeComment, onLoadReplies, onAddReply, onLikeReply }: CommentItemProps) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyInput, setReplyInput] = useState('');
   const [showReplies, setShowReplies] = useState(false);
-  const isLiked = currentUser ? comment.likes.some(l => l.userId === currentUser.id) : false;
+  const [likesEndpoint, setLikesEndpoint] = useState<string | null>(null);
 
   const handleReply = () => {
     if (!replyInput.trim()) return;
@@ -328,11 +335,22 @@ function CommentItem({ comment, postId, currentUser, onLikeComment, onAddReply, 
     setShowReplies(true);
   };
 
+  const handleToggleReplies = () => {
+    const willShow = !showReplies;
+    setShowReplies(willShow);
+    if (willShow && !comment.repliesLoaded) {
+      onLoadReplies(postId, comment.id);
+    }
+  };
+
+  const replyCount = comment.replyCount > 0 ? comment.replyCount : comment.replies.length;
+
   return (
     <div className={styles['comment-item']}>
+      <LikesModal endpoint={likesEndpoint} onClose={() => setLikesEndpoint(null)} />
       <Image
         src={comment.authorAvatar}
-        alt={comment.authorName}
+        alt={comment.authorName || 'User'}
         width={36}
         height={36}
         className={styles['comment-avatar']}
@@ -345,11 +363,20 @@ function CommentItem({ comment, postId, currentUser, onLikeComment, onAddReply, 
         <div className={styles['comment-actions']}>
           <button
             type="button"
-            className={`${styles['comment-action']} ${isLiked ? styles['comment-action-liked'] : ''}`}
+            className={`${styles['comment-action']} ${comment.likedByMe ? styles['comment-action-liked'] : ''}`}
             onClick={() => currentUser && onLikeComment(postId, comment.id)}
           >
-            Like {comment.likes.length > 0 && <span className={styles['reaction-count']}>{comment.likes.length}</span>}
+            Like
           </button>
+          {comment.likeCount > 0 && (
+            <button
+              type="button"
+              className={styles['reaction-count']}
+              onClick={() => setLikesEndpoint(API.comments.likes(comment.id))}
+            >
+              {comment.likeCount}
+            </button>
+          )}
           <button type="button" className={styles['comment-action']} onClick={() => setReplyOpen(o => !o)}>
             Reply
           </button>
@@ -375,13 +402,17 @@ function CommentItem({ comment, postId, currentUser, onLikeComment, onAddReply, 
           </div>
         )}
 
-        {comment.replies.length > 0 && (
-          <button type="button" className={styles['toggle-replies']} onClick={() => setShowReplies(o => !o)}>
-            {showReplies ? 'Hide' : `View ${comment.replies.length}`} repl{comment.replies.length !== 1 ? 'ies' : 'y'}
+        {replyCount > 0 && (
+          <button type="button" className={styles['toggle-replies']} onClick={handleToggleReplies}>
+            {showReplies ? 'Hide' : `View ${replyCount}`} repl{replyCount !== 1 ? 'ies' : 'y'}
           </button>
         )}
 
-        {showReplies && comment.replies.map(reply => (
+        {showReplies && !comment.repliesLoaded && (
+          <p className={styles['comments-loading']}>Loading replies…</p>
+        )}
+
+        {showReplies && comment.repliesLoaded && comment.replies.map(reply => (
           <ReplyItem
             key={reply.id}
             reply={reply}
@@ -407,13 +438,14 @@ interface ReplyItemProps {
 }
 
 function ReplyItem({ reply, postId, commentId, currentUser, onLikeReply }: ReplyItemProps) {
-  const isLiked = currentUser ? reply.likes.some(l => l.userId === currentUser.id) : false;
+  const [likesEndpoint, setLikesEndpoint] = useState<string | null>(null);
 
   return (
     <div className={styles['reply-item']}>
+      <LikesModal endpoint={likesEndpoint} onClose={() => setLikesEndpoint(null)} />
       <Image
         src={reply.authorAvatar}
-        alt={reply.authorName}
+        alt={reply.authorName || 'User'}
         width={30}
         height={30}
         className={styles['reply-avatar']}
@@ -426,11 +458,20 @@ function ReplyItem({ reply, postId, commentId, currentUser, onLikeReply }: Reply
         <div className={styles['comment-actions']}>
           <button
             type="button"
-            className={`${styles['comment-action']} ${isLiked ? styles['comment-action-liked'] : ''}`}
+            className={`${styles['comment-action']} ${reply.likedByMe ? styles['comment-action-liked'] : ''}`}
             onClick={() => currentUser && onLikeReply(postId, commentId, reply.id)}
           >
-            Like {reply.likes.length > 0 && <span className={styles['reaction-count']}>{reply.likes.length}</span>}
+            Like
           </button>
+          {reply.likeCount > 0 && (
+            <button
+              type="button"
+              className={styles['reaction-count']}
+              onClick={() => setLikesEndpoint(API.replies.likes(reply.id))}
+            >
+              {reply.likeCount}
+            </button>
+          )}
           <span className={styles['comment-time']}>{timeAgo(reply.createdAt)}</span>
         </div>
       </div>

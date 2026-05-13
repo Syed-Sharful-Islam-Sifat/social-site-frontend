@@ -6,6 +6,18 @@ export const API = {
     logout:   '/auth/logout',
   },
   posts: {
-    feed: '/posts',
+    feed:     '/posts',
+    like:     (id: string) => `/posts/${id}/like`,
+    likes:    (id: string) => `/posts/${id}/likes`,
+    comments: (id: string) => `/posts/${id}/comments`,
   },
-} as const;
+  comments: {
+    like:    (id: string) => `/comments/${id}/like`,
+    likes:   (id: string) => `/comments/${id}/likes`,
+    replies: (id: string) => `/comments/${id}/replies`,
+  },
+  replies: {
+    like:  (id: string) => `/replies/${id}/like`,
+    likes: (id: string) => `/replies/${id}/likes`,
+  },
+};

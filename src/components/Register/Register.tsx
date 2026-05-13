@@ -25,7 +25,7 @@ export default function Register() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    const result = await authRegister(data.firstName, data.lastName, data.email, data.password);
+    const result = await authRegister(data.firstName, data.lastName, data.email, data.password, data.repeatPassword, data.agreed);
     if (result.ok) {
       router.push('/feed');
     } else if (result.field === 'email') {
